@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdint.h>
 
 unsigned int mbr;         // memory buffer register: dado lido ou a ser escrito na memória
 unsigned short int  mar,  // memory address register: endereço de memória a ser acessado
@@ -21,19 +20,16 @@ void decodifica(){
 
 }
 
-void executa(){
+void executa(int){
 
 }
 
 int main(){
-	flag = 0;
+	int flag = 0;
 	do{
 		busca();
 		decodifica();
 		flag = executa(); // quando for halt
+        // impressão
 	} while(flag == 1);
-	
-	rotinas de impressão
-	imprime de forma alinhada
-	printf("%0x");
 }
