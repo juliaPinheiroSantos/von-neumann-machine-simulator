@@ -38,6 +38,11 @@ void decode(){
         pc = mbr >> 7;
     }
 
+    if(ir >= 0b10101 && ir <= 0b10110){
+        mbr = mbr << 8;
+        mar = mbr >> 7;
+    }
+
     if(ir >= 0b10111 && ir <= 0b11101){
         ro0 = (mbr << 13) >> 29;
         mbr = mbr << 8;
