@@ -89,24 +89,69 @@ void decode(){
     ir = mbr >> 19;                         // o mbr contém a palavra de instrução inteira [0000 0000] [0101 1111] [1111 1111] [0000 0000]
                                             // como queremos somente os bits de 23:19 referentes ao opcode, deslocamos para a direita em 19 bits.
                                             // [0000 0000] [0101 1111] [1111 1111] [0000 0000] -> [0000 0000] [0000 0000] [0000 0000] [0000 1011]
-    if(ir >= 0b00000 && ir <= 0b00001){
+    
+    // instrução com 8 bits - hlt (0) e nop (1)
+    // formato: [0000 0000] [opcode(5bits) 000] [8bits outra instrução] [8bits outra instrução]
+    // ambas não fazem "nada" no decode(), então só pegamos o opcode delas e guardamos em ir
+    
+
+    if(ir >= 0 && ir <= 1){
         return
     }
 
-    if(ir >= 0b01110 && ir <= 0b10100){
-        mbr = mbr << 8;
-        pc = mbr >> 7;
-    }
-
-    if(ir >= 0b10101 && ir <= 0b10110){
-        mbr = mbr << 8;
-        mar = mbr >> 7;
-    }
-
-    if(ir >= 0b10111 && ir <= 0b11101){
+    /** instrução com 16 bits - ldr (2) até xor (12)
+    formato: [0000 0000] [opcode(5bits) reg0(3bits)] [reg1(3bits) 0 0000] [8bits outra instrução] 
+    todas guardam os índices dos registradores em reg0 (1º registrador da instrução) e em reg1 (2º registrador da instrução)
+    para pegar reg0 (ou ro0), precisamos deslocar 13bits para a esquerda e depois 29bits para a direita
+    para pegar reg1 (ou ro1), precisamos deslocar 16bits para a esquerda e depois 29bits para a direita
+    */
+    if(ir >= 2 && ir <= 12){ 
         ro0 = (mbr << 13) >> 29;
-        mbr = mbr << 8;
-        imm = mbr >> 7;
+        ro1 = (mbr << 16) >> 29;
+    }
+
+    /** instrução com 8 bits - not (13)
+    formato: [0000 0000] [opcode(5bits) reg0(3bits)] [8bits outra instrução] [8bits outra instrução]
+    o índice do registrador da instrução precisa ficar no reg0 (ou ro0)
+    para pegar o reg0, precisamos deslocar 13bits para a esquerda e depois 29bits para a direita
+     */
+    if(ir == 13){
+        ro0 = (mbr << 13) >> 29;
+    }
+
+    /** instrução com 24 bits - je (14) até jmp (20) 
+    formato: [0000 0000] [opcode(5bits) 000] [endereço de memória(8bits)] [endereço de memória(8bits)]
+    o endereço de memória precisa ficar no registrador PC
+    para pegar o endereço de memória, precisamos deslocar 16 bits para a esquerda e depois 16 bits para a direita
+    */
+    if(ir >= 14 && ir <= 20){
+        pc = (mbr << 16) >> 16;
+    }
+
+    /** instrução com 24 bits - ld (21) até st (22)
+    formato: [0000 0000] [opcode(5bits) reg0(3bits)] [endereço de memória(8bits)] [endereço de memória(8bits)] 
+    o índice do registrador da instrução precisa ficar no reg0 (ou ro0)
+        para pegar o reg0, precisamos deslocar 13 bits para a esquerda e depois 29 bits para a direita
+    o endereço de memória precisa ficar no registrador mar
+        para pegar o endereço de memória, precisamos deslocar 16bits para a esquerda e depois 16bits para a direita
+    */
+    if(ir >= 21 && ir <= 22){
+        ro0 = (mbr << 13) >> 29;
+        mar = (mbr << 16) >> 16;
+
+    }
+
+
+    /** instrução com 24 bits - movi(23) até rsh (29)
+    formato: [0000 0000] [opcode(5bits) reg0(3bits)] [endereço de memória(8bits)] [endereço de memória(8bits)] 
+    o índice do registrador da instrução precisa ficar no reg0 (ou ro0)
+        para pegar o reg0, precisamos deslocar 13 bits para a esquerda e depois 29 bits para a direita
+    o imediato precisa ficar no registrador imm
+        para pegar o imediato, precisamos deslocar 16bits para a esquerda e depois 16bits para a direita
+    */
+    if(ir >= 23 && ir <= 29){
+        ro0 = (mbr << 13) >> 29;
+        imm = (mbr << 16) >> 16;
     }
 
 
@@ -115,6 +160,12 @@ void decode(){
 
 
 void execute(){
+    switch(ir){
+        case 1: pc++;
+        case 2: 
+    }
+
+
 
 }
 
