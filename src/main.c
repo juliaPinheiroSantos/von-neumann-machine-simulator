@@ -158,11 +158,168 @@ void decode(){
 }
 
 
+/** Função de busca, responsável por executar a instrução de acordo com o seu opcode (armazenado no registrador ir).
+    O estado atual de cada registrador depende: da instrução buscada anteriormente e da instrução buscada no atual ciclo de máquina.
+    O incremento do pc depois da execução de cada instrução depende do tamanho da instrução que foi executada:
+        se a instrução tem 1 byte, incrementa o pc em 1
+        se a instrução tem 2 bytes, incrementa o pc em 2
+        se a instrução tem 3 bytes, incrementa o pc em 3
+    Todo endereço de memória deve ser indicado pelo mar.
+    Todo o tráfego de e para a memória RAM deve passar pelo mbr.
+ */
 
 void execute(){
     switch(ir){
-        case 1: pc++;
-        case 2: 
+        case 1: 
+            pc++;
+            break;
+
+        case 2: /**ldr rX, rY -> rX = *rY
+            o que faz: carrega no registrador rX o conteúdo do endereço indicado pelo registrador rY
+            se queremos pegar o conteúdo do endereço indicado por rY, precisamos que o endereço desse conteúdo esteja no mar
+                além disso, o conteúdo depois de buscado, precisa estar no mbr
+            depois disso é que esse conteúdo deve ser inserido no registrador indicado por rX
+            */ 
+            mar = reg[ro1];                             // o endereço está em rY (que é o índice guardado em ro1)
+            
+            // considerando que o dado tem 16bits, cada índice de memória guarda 8bits e o barramento também é de 8bits
+            // precisamos pegar o conteúdo do endereço indicado por mar (sendo mar = reg[ro1]) em duas partes: 
+            mbr = memoria[mar];                         // memoria[mar] = 8bits MSB do dado
+            mbr = (mbr << 8) + memoria[mar + 1];        // memoria[mar + 1] = 8 bits LSB do dado
+            reg[ro0] = mbr;                             // guardamos o conteúdo de mbr (que é o dado buscado na posição reg[reo1]) dentro do ro0
+            pc = pc + 2;                                // como a instrução ldr tem 16 bits, não podemos incrementar o pc só em 1, porque isso iria fazer com que ele apontasse para os 8 bits LSB dessa instrução
+                                                        // portanto, incrementamos em 2 para pegar a próxima instrução válida.
+            break;
+                                                        
+        case 3: /**str rX, rY -> ∗rY = rX 
+            o que faz: armazena no endereço indicado por rY o valor do registrador rX
+            se queremos pegar o endereço de rY (que é reg[ro1]), precisamos que esse endereço esteja no mar
+            se queremos armazenar o conteúdo de rX (que é reg[ro0]) no endereço de rY, precisamos que o conteúdo de rX esteja no mbr
+            */
+
+            mar = reg[ro1];
+            mbr = reg[ro0];
+            // estado atual do mbr: [0000 0000] [0000 0000] [8bits MSB do dado] [8bits LSB do dado]
+            // a gravação na memória deve ser feita de byte em byte
+            // memoria[mar] = 8 bits MSB de mbr
+            memoria[mar] = (mbr << 16) >> 24;
+            // memoria[mar + 1] = 8 bits LSB de mbr
+            memoria[mar + 1] = (mbr << 24) >> 24;
+            pc = pc + 2;
+            break;
+
+        case 4: /** add rX, rY -> rX = rX + rY
+            o que faz: adiciona o conteúdo de rX e rY e guarda esse valor em rX
+             */
+             reg[ro0] = reg[ro0] + reg[ro1];
+             pc = pc + 2;
+             break;
+
+        case 5: /** sub rX, rY -> rX = rX - rY
+            o que faz: subtrái do conteúdo de rX o valor de rY, e guarda esse valor em rX
+            */
+            reg[ro0] = reg[ro0] - reg[ro1];
+            pc = pc + 2;
+            break;
+        
+        case 6: /** mul rX, rY -> rX = rX * rY
+            o que faz: multiplica o conteúdo de rX pelo conteúdo de rY, e guarda esse valor em rX
+            */
+            reg[ro0] = reg[ro0] * reg[ro1];
+            pc = pc + 2;
+            break;
+        
+        case 7: /** div rX, rY -> rX = rX / rY
+            o que faz: divide o conteúdo de rX pelo conteúdo de rY, e guarda esse valor em rX
+            não precisamos nos preocupar com um resultado de "valor flutuante" no caso dessa divisão de inteiros, pois o C já fica responsável por ignorar o resto e considerar só o inteiro
+            entretanto, no caso de divisão por 0, isso pode dar algum erro
+             */
+            if(reg[ro1] != 0){
+                reg[ro0] = reg[ro0] / reg[ro1];
+            } else {
+                printf("Divisão por zero não é permitida").
+            }
+             
+            pc = pc + 2;
+            break;
+        
+        case 8: /** cmp rX, rY 
+            o que faz: compara o conteúdo de rX com o conteúdo de rY
+            se rX = rY, então e = 1; senão, e = 0
+            se rX < rY, então l = 1; senão, l = 0
+            se rX > rY, então g = 1; senão g = 0
+         */
+
+            
+            if(reg[ro0] == reg[ro1]){
+                e = 1;
+            } else {
+                e = 0;
+            }
+
+            if(reg[ro0] < reg[ro1]){
+                l = 1;
+            } else {
+                l = 0
+            }
+
+            if(reg[ro0] > reg[ro1]){
+                g = 1;
+            } else {
+                g = 0;
+            }
+
+            pc = pc + 2;
+
+            break;
+        
+        case 9: /** movr rX, rY -> rX = rY
+            o que faz: substitui o valor de rX pelo valor de rY, é uma atribuição simples
+            */
+            reg[ro0] = reg[ro1];
+            pc = pc + 2;
+            break;
+        
+        case 10: /** and rX, rY -> rX = rX & rY 
+            o que faz: operação bit-a-bit. realiza a operação lógica '&' entre rX e rY e guarda o resultado dessa operação em rX
+            o operaçao '&' alinha os dois números binários um debaixo do outro e faz uma comparação coluna por coluna
+            se nessa coluna ambos os bits forem 1, ele resulta em 1. se um deles for 0, resulta em 0
+            */
+
+            reg[ro0] = reg[ro0] & reg[ro1];
+            pc = pc + 2;
+            break;
+        
+        case 11: /** or rX, rY -> rX = rX | rY
+            o que faz: operação bit-a-bit. realiza a operação lógica '|' (or) entre rX e rY e guarda o resultado dessa operação em rX
+            a operação '|' alinha os dois números binários um debaixo do outro e faz uma comparação coluna por coluna
+            se nessa coluna um dos bits for 1, ele resulta em 1. se ambos os bits forem 0, resulta em 0
+             */
+            reg[ro0] = reg[ro0] | reg[ro1];
+            pc = pc + 2;
+            break;
+
+
+        case 12: /** xor rX, rY -> rX = rX ^ rY
+            o que faz: operação bit-a-bit. realiza a operação lógica '^' (xor) entre rX e rY e guarda o resultado dessa operação em rX
+            a operação '^' alinha os dois números binários um debaixo do outro e faz uma comparação coluna por coluna
+            se nessa coluna os bits forem diferentes entre si, ele resulta em 1. se forem iguais, resulta em 0
+             */
+
+            reg[ro0] = reg[ro0] ^ reg[ro1];
+            pc = pc + 2;
+            break;
+        
+        case 13: /** not rX ->  rX = !rX 
+            o que faz: operação bit-a-bit. ele inverte todos os bits do valor armazenado em rx
+            o que é 1 vira 0, e o que é 0 vira 1
+            em C, o operador que faz isso é o '~'
+         */
+
+            reg[ro0] = ~reg[ro0];
+            pc = pc + 1;
+            break;
+
     }
 
 
