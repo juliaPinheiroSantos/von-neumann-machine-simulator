@@ -314,11 +314,183 @@ void execute(){
             o que faz: operação bit-a-bit. ele inverte todos os bits do valor armazenado em rx
             o que é 1 vira 0, e o que é 0 vira 1
             em C, o operador que faz isso é o '~'
-         */
+            */
 
             reg[ro0] = ~reg[ro0];
             pc = pc + 1;
             break;
+        
+        case 14: /** je Z -> PC = Z se E = 1
+            o que faz: salto para o endereço Z se a flag E = 1
+            o endereço Z vai estar armazendo no registrador mar
+            não pode incrementar o pc para a próxima posição porque vai ir para a posição Z que está armazenada em PC agora
+            se não entrar na condição, deve buscar a próxima instrução, já que não vai pro endereço Z do salto
+             */
+
+             if(e == 1){
+                pc = mar;
+             } else {
+                pc = pc + 3;
+             }
+
+             break;
+        
+        case 15: /** jne Z -> PC = Z se E = 0
+             o que faz: salto para o endereço Z se a flag E = 0
+             */
+
+             if(e == 0){
+                pc = mar;
+             } else {
+                pc = pc + 3;
+             }
+
+             break;
+        
+        case 16: /** jl Z -> PC = Z se L = 1
+             o que faz: salto para o endereço Z se a flag L = 1
+             */
+
+             if(l == 1){
+                pc = mar;
+             } else {
+                pc = pc + 3;
+             }
+
+             break;
+
+        case 17: /** jle Z -> PC = Z se E = 1 ou L = 1
+             o que faz: salto para o endereço Z se a flag E = 1 ou a flag L = 1
+             */
+            
+             if(e = 1 || l == 1){
+                pc = mar;
+             } else {
+                pc = pc + 3;
+             }
+        case 18: /** jg Z -> PC = Z se G = 1
+            o que faz: salto para o endereço Z se a flag G = 1
+             */
+            
+             if(g == 1){
+                pc = mar;
+             } else {
+                pc = pc + 3;
+             }
+        
+        case 19: /** jge Z -> PC = Z se E = 1 ou G = 1
+             */
+
+             if(e == 1 || g == 1){
+                pc = mar;
+             } else {
+                pc = pc + 3;
+             }
+        
+        case 20: /** jmp Z -> PC = Z
+             */
+
+             pc = mar;
+
+        case 21: /** ld rX, Z -> rX = *Z
+            o que faz: carrega no registrador rX a palavra de memória que está no endereço memoria[Z]
+            o endereço de memória vai pro mar
+            a palavra que está em mbr será toda sobrescrita pela palavra em memória[mar]
+                isso acontece porque o C, quando fazemos uma atribuição de uma variável menor (memoria[mar]) para uma variável maior (mbr)
+                ele realiza um zero padding (preenchimentos com zero à esquerda), que transforma o mbr todo em [0000] [0000] [0000] [0000]
+            */
+
+            mbr = memoria[mar];
+            mbr = (mbr << 8) + memoria[mar + 1];
+            reg[ro0] = mbr;
+
+            pc = pc + 3;
+
+            break;
+        
+        case 22: /** st rX, Z -> *Z = rX
+            o que faz: armazena no endereço memoria[Z] a palavra que está no registrador rX
+            a palavra que queremos salvar está no registrador de índice ro0
+            precisamos passar pro mbr essa palavra
+            como o mar é menor que o mbr, e a palavra de memória tem 16 bits, vamos armazenar ela em duas unidades endereçáveis da memória
+                que é mar e mar+1
+                no memoria[mar], vamos colocar os 8 bits MSB de mbr. Para isso, deslocamos 16 bits para a esquerda e 24 bits para a direita
+                na memoria[mar], vamos colocar os 8 bits LSB de mbr. Para isso, deslocamos 24 bits para a esquerda e 24 bits para a direita
+            */
+            mbr = reg[ro0];
+            memoria[mar] = (mbr << 16) >> 24;
+            memoria[mar + 1] = (mbr << 24) >> 24;
+            pc = pc + 3;
+             
+            break;
+        
+        case 23: /** movi rX, IMM -> rX = IMM
+            o que faz: coloca no registrador rX o valor do imediato imm
+            */
+            reg[ro0] = imm;
+
+            pc = pc + 3;
+
+            break;
+        
+        case 24: /** addi rX, IMM -> rX = rX + imm
+            o que faz: soma o imm ao valor de rX e guarda em rX
+            */
+
+            reg[ro0] += imm;
+
+            pc = pc + 3;
+
+            break;
+        
+        case 25: /** subi rX, IMM -> rX = rX - imm
+             o que faz: subtrai o imm ao valor de rX e guarda em rX
+            */
+
+            reg[ro0] = reg[ro0] - imm;
+
+            pc = pc + 3;
+
+            break;
+        
+        case 26: /** muli rX, IMM -> rX = rX * imm
+             o que faz: multiplica o valor de rX por imm e guarda em rX
+            */
+
+            reg[ro0] = reg[ro0] * imm;
+
+            pc = pc + 3;
+
+            break;
+        
+        case 27: /** divi rX, IMM -> rX = rX / imm
+             o que faz: divide o valor de rX por imm e guarda em rX
+             */
+
+             reg[ro0] = reg[ro0] / imm;
+
+             pc = pc + 3;
+
+             break;
+
+        case 28: /**lsh rX, IMM -> rX = rX << imm
+             o que faz: desloca rX imm bits para a esquerda
+             */
+
+             reg[ro0] = reg[ro0] << imm;
+
+             pc = pc + 3;
+
+             break;
+        
+        case 29: /** rsh rX, IMM -> rX = rX >> imm
+             o que faz: desloca rX imm bits para a direita
+             */
+
+             reg[ro0] = reg[ro0] >> imm;
+             pc = pc + 3;
+
+             break;
 
     }
 
