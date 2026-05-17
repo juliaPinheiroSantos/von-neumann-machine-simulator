@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
+#define BG_YELLOW "\033[30;103m" 
+#define RESET "\033[0m"
 
 /* DADOS IMPORTANTES:
     1. memória é um vetor de 256 posições com tam de 8 bits;
@@ -25,14 +27,21 @@ unsigned char memoria[256];             // a memória será um vetor de 256 posi
 void fetch();                           // declaração da função fetch() "busca"
 void decode();                          // declaração da função decode() "decodificação"
 int execute();                          // declaração da função execute() "execução"
+void imprimirEstado();
 
 int main(){
     int flag = 0;
+    memoria[256] = 0;
+    memoria[0] = 0xB8;
+    memoria[1] = 0x00;
+    memoria[2] = 0x32;
+    memoria[3] = 0x00;
+
     do{
         fetch();
         decode();
         flag = execute();
-    }while(flag == 1);
+    }while(flag == 0);
 
     return 0;
 }
@@ -96,7 +105,7 @@ void decode(){
     
 
     if(ir >= 0 && ir <= 1){
-        return
+        return;
     }
 
     /** instrução com 16 bits - ldr (2) até xor (12)
@@ -168,8 +177,13 @@ void decode(){
     Todo o tráfego de e para a memória RAM deve passar pelo mbr.
  */
 
-void execute(){
+int execute(){
     switch(ir){
+        case 0: /** hlt -> para o programa
+            como o nosso ciclo de máquina continua funcionando while(flag == 0), 
+            retornar 1 nesse case vai fazer o ciclo parar.
+             */
+            return 1;
         case 1: 
             pc++;
             break;
@@ -237,7 +251,7 @@ void execute(){
             if(reg[ro1] != 0){
                 reg[ro0] = reg[ro0] / reg[ro1];
             } else {
-                printf("Divisão por zero não é permitida").
+                printf("Divisão por zero não é permitida");
             }
              
             pc = pc + 2;
@@ -260,7 +274,7 @@ void execute(){
             if(reg[ro0] < reg[ro1]){
                 l = 1;
             } else {
-                l = 0
+                l = 0;
             }
 
             if(reg[ro0] > reg[ro1]){
@@ -491,11 +505,51 @@ void execute(){
              pc = pc + 3;
 
              break;
+        
+        default: /** se não for nenhum dos opcodes acima, é porque é uma instrução que não foi codificada
+             não devemos executá-la, então vamos mandar uma mensagem de erro
+            */
+
+            printf("Erro: instrução desconhecida no endereço %04X\n", pc);
+            return 1;
 
     }
 
+    imprimirEstado();
 
+    return 0;
 
 }
+
+void imprimirEstado(){
+    #define BG_YELLOW "\033[30;103m" 
+    #define RESET     "\033[0m"
+
+    printf("\nCPU:\n");
+    printf("R0:      " BG_YELLOW "%04X" RESET "    R1:      " BG_YELLOW "%04X" RESET "    R2:      " BG_YELLOW "%04X" RESET "    R3: " BG_YELLOW "%04X" RESET "\n", reg[0], reg[1], reg[2], reg[3]);      
+    printf("R4:      " BG_YELLOW "%04X" RESET "    R5:      " BG_YELLOW "%04X" RESET "    R6:      " BG_YELLOW "%04X" RESET "    R7: " BG_YELLOW "%04X" RESET "\n", reg[4], reg[5], reg[6], reg[7]);
+    printf("MBR:     " BG_YELLOW "%08X" RESET "        MAR:     " BG_YELLOW "%04X" RESET "    IMM:     " BG_YELLOW "%04X" RESET "    PC: " BG_YELLOW "%04X" RESET "\n", mbr, mar, imm, pc);                  
+    printf("IR:      " BG_YELLOW "%02X" RESET "              RO0:     " BG_YELLOW "%X" RESET "                RO1: " BG_YELLOW "%X" RESET "\n", ir, ro0, ro1);          
+    printf("E:       " BG_YELLOW "%X" RESET "               L:       " BG_YELLOW "%X" RESET "                G:   " BG_YELLOW "%X" RESET "\n", e, l, g);  
+
+    printf("\nMemória:\n");
+    printf("   00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n");
+
+        for (int i = 0; i < 256; i += 16) {
+        printf("%02X ", i);
+        for (int j = 0; j < 16; j++) {
+            printf(BG_YELLOW "%02X" RESET " ", memoria[i + j]);
+        }
+        printf("\n");
+    }
+
+    printf("\nPressione uma tecla para iniciar o próximo ciclo de máquina ou aperte CTRL+C para finalizar a execução\ndo trabalho.\n");
+    getchar();
+
+    #undef RESET
+
+
+
+}   
 
 
