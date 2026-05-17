@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdint.h>
-#define BG_YELLOW "\033[30;103m" 
-#define RESET "\033[0m"
+#include <string.h>
+#include "loader.h"
+#define BG_YELLOW "\033[30;103m"        // define o código de cor ANSI para pintar o fundo de amarelo na impressão dos dados da CPU, igual está no trabalho
+#define RESET "\033[0m"                 // reseta para a formação normal do terminal quando não for impressão da CPU
 
 /* DADOS IMPORTANTES:
     1. memória é um vetor de 256 posições com tam de 8 bits;
@@ -22,7 +24,7 @@ unsigned char ir,                       // instruction register: opcode da instr
               l,                        // flag Lower (cmp): 1 se rX < rY
               g;                        // flag Greater (cmp): 1 se rX > rY
 unsigned short reg[8]; 
-unsigned char memoria[256];             // a memória será um vetor de 256 posições com tamanho de 8 bits
+unsigned char memoria[256] = {0};       // a memória será um vetor de 256 posições com tamanho de 8 bits
 
 void fetch();                           // declaração da função fetch() "busca"
 void decode();                          // declaração da função decode() "decodificação"
@@ -31,12 +33,9 @@ void imprimirEstado();
 
 int main(){
     int flag = 0;
-    memoria[256] = 0;
-    memoria[0] = 0xB8;
-    memoria[1] = 0x00;
-    memoria[2] = 0x32;
-    memoria[3] = 0x00;
-
+    imprimirEstado();
+    carregar_memoria("programa.txt", memoria);
+    imprimirEstado();
     do{
         fetch();
         decode();
@@ -522,10 +521,9 @@ int execute(){
 }
 
 void imprimirEstado(){
-    #define BG_YELLOW "\033[30;103m" 
-    #define RESET     "\033[0m"
-
     printf("\nCPU:\n");
+    // %04X imprime o número em hexadecimal, maiúsculo, com 4 dígitos e preenchidos com 0's 
+    // aplicamos o fundo amarelo só para os valores 
     printf("R0:      " BG_YELLOW "%04X" RESET "    R1:      " BG_YELLOW "%04X" RESET "    R2:      " BG_YELLOW "%04X" RESET "    R3: " BG_YELLOW "%04X" RESET "\n", reg[0], reg[1], reg[2], reg[3]);      
     printf("R4:      " BG_YELLOW "%04X" RESET "    R5:      " BG_YELLOW "%04X" RESET "    R6:      " BG_YELLOW "%04X" RESET "    R7: " BG_YELLOW "%04X" RESET "\n", reg[4], reg[5], reg[6], reg[7]);
     printf("MBR:     " BG_YELLOW "%08X" RESET "        MAR:     " BG_YELLOW "%04X" RESET "    IMM:     " BG_YELLOW "%04X" RESET "    PC: " BG_YELLOW "%04X" RESET "\n", mbr, mar, imm, pc);                  
@@ -533,23 +531,20 @@ void imprimirEstado(){
     printf("E:       " BG_YELLOW "%X" RESET "               L:       " BG_YELLOW "%X" RESET "                G:   " BG_YELLOW "%X" RESET "\n", e, l, g);  
 
     printf("\nMemória:\n");
+    // imprime o cabeçalho (colunas) da memória que vai de 00 até 0F
     printf("   00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\n");
-
-        for (int i = 0; i < 256; i += 16) {
+        // fazemos um for que percorre todas as 256 posições do vetor de memória
+        for (int i = 0; i < 256; i += 16) { // para imprimir cada linha em hexadecimal também
         printf("%02X ", i);
         for (int j = 0; j < 16; j++) {
-            printf(BG_YELLOW "%02X" RESET " ", memoria[i + j]);
+            printf(BG_YELLOW "%02X" RESET " ", memoria[i + j]); // imprime o que está armazenado em cada índice do vetor de memória 
         }
         printf("\n");
     }
 
-    printf("\nPressione uma tecla para iniciar o próximo ciclo de máquina ou aperte CTRL+C para finalizar a execução\ndo trabalho.\n");
+    printf("\nPressione uma tecla para iniciar o próximo ciclo de máquina ou aperte CTRL+C para finalizar a execução do trabalho.\n");
     getchar();
 
     #undef RESET
 
-
-
 }   
-
-
