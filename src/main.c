@@ -134,6 +134,7 @@ void decode(){
     */
     if(ir >= 14 && ir <= 20){
         pc = (mbr << 16) >> 16;
+        mar = (mbr << 16) >> 16;
     }
 
     /** instrução com 24 bits - ld (21) até st (22)

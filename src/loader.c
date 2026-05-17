@@ -5,7 +5,7 @@
 /** Arquivo "loader" ou montador, responsável por carregar nosso programa.txt na memória.
  */
 
-/* Para facllitar, criamos uma struct instrucao que vai "catalogar" todos os opcodes que temos junto com o número dele.
+/* Para facilitar, criamos uma struct instrucao que vai "catalogar" todos os opcodes que temos junto com o número dele.
     char mnemonico[10] vai armazenar o comando, como hlt, ldr e etc.
     unsigned char opcode vai ser o opcode de cada instrução em decimal. 
         Colocamos como char porque vamos comparar com stcmp() com o char que vier na leitura de cada linha.
@@ -138,7 +138,7 @@ void carregar_memoria(const char *arq, unsigned char *memoria) {
                     case 19:
                     case 20:
                         {
-                            sscanf(conteudo, "%*s, %x", &z);
+                            sscanf(conteudo, "%*s %x", &z);
                             memoria[endereco] = opcode << 3;
                             memoria[endereco + 1] = z >> 8;
                             memoria[endereco + 2] = (z << 8) >> 8;
