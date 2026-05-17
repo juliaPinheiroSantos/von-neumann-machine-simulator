@@ -34,7 +34,7 @@ void imprimirEstado();
 int main(){
     int flag = 0;
     imprimirEstado();
-    carregar_memoria("programa.txt", memoria);
+    carregar_memoria("teste3.txt", memoria);
     imprimirEstado();
     do{
         fetch();
@@ -378,11 +378,13 @@ int execute(){
              o que faz: salto para o endereço Z se a flag E = 1 ou a flag L = 1
              */
             
-             if(e = 1 || l == 1){
+             if(e == 1 || l == 1){
                 pc = mar;
              } else {
                 pc = pc + 3;
              }
+             break;
+
         case 18: /** jg Z -> PC = Z se G = 1
             o que faz: salto para o endereço Z se a flag G = 1
              */
@@ -392,6 +394,8 @@ int execute(){
              } else {
                 pc = pc + 3;
              }
+
+             break;
         
         case 19: /** jge Z -> PC = Z se E = 1 ou G = 1
              */
@@ -401,11 +405,14 @@ int execute(){
              } else {
                 pc = pc + 3;
              }
+
+             break;
         
         case 20: /** jmp Z -> PC = Z
              */
 
              pc = mar;
+             break;
 
         case 21: /** ld rX, Z -> rX = *Z
             o que faz: carrega no registrador rX a palavra de memória que está no endereço memoria[Z]
