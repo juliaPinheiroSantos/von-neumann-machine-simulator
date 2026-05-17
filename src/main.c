@@ -34,7 +34,7 @@ void imprimirEstado();
 int main(){
     int flag = 0;
     imprimirEstado();
-    carregar_memoria("teste3.txt", memoria);
+    carregar_memoria("programa.txt", memoria);
     imprimirEstado();
     do{
         fetch();
