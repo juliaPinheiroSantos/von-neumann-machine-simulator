@@ -1,0 +1,10 @@
+0;i;movi r0, F0F0
+3;i;movi r1, 0F0F
+6;i;and r0, r1
+8;i;or r0, r1
+a;i;xor r0, r1
+c;i;not r1
+d;i;movi r2, 1
+10;i;lsh r2, 4
+13;i;rsh r2, 2
+16;i;hlt

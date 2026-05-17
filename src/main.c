@@ -47,7 +47,7 @@ int main(){
 
 /**
  * Função de busca, responsável por buscar o próximo endereço de memória e armazenar no registrador mbr
-    Assumimos que cada instrução poderá ter 1, 2 ou 4 (bytes). Cada endereço de memória armazena 1 byte (8 bits)
+    Assumimos que cada instrução poderá ter 1, 2 ou 3 (bytes). Cada endereço de memória armazena 1 byte (8 bits)
     Vamos buscar sempre 3 bytes e inserir no mbr através de operações bit-a-bit de "shift"
  */
 void fetch(){
@@ -56,17 +56,18 @@ void fetch(){
     
     mbr = memoria[mar];                 // o registrador mbr recebe os primeiros 8 bits da palavra de instrução
                                         // mbr = [0000 0000] [0000 0000] [0000 0000] [byte 1]
-     
+    
+    
     mar++;                              // incrementa o endereço para pegar os próximos 8 bits da instrução
                                         // memoria[mar]: [byte 2]
     
-    mbr = (mbr << 8) + memoria[mar];    // o registrador mbr recebe os próximos 8 bits da palavra de instrução
+    mbr = (mbr << 8) | memoria[mar];    // o registrador mbr recebe os próximos 8 bits da palavra de instrução
                                         // mbr = [0000 0000] [0000 0000] [byte 1] [byte 2]
    
     mar++;                              // incrementa o endereço para pegar os próximos 8 bits da instrução
                                         // memoria[mar]: [byte 3]
                                         
-    mbr = (mbr << 8) + memoria[mar];    // o registrador mbr recebe os próximos 8 bits da palavra de instrução
+    mbr = (mbr << 8) | memoria[mar];    // o registrador mbr recebe os próximos 8 bits da palavra de instrução
                                         // mbr = [0000 0000] [byte 1] [byte 2] [byte 3]
 
 }
@@ -509,8 +510,6 @@ int execute(){
         default: /** se não for nenhum dos opcodes acima, é porque é uma instrução que não foi codificada
              não devemos executá-la, então vamos mandar uma mensagem de erro
             */
-
-            printf("Erro: instrução desconhecida no endereço %04X\n", pc);
             return 1;
 
     }
