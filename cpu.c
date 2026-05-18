@@ -91,68 +91,140 @@ void imprime_estado(){
     getchar();
 }
 
-void le_arquivo(char *nome_arquivo){
+void le_arquivo(char *nome_arquivo) {
     FILE *fp = fopen(nome_arquivo, "r");
-    if(fp == NULL){
+    if (fp == NULL) {
         printf("Erro ao abrir arquivo %s\n", nome_arquivo);
         return;
     }
 
     char linha[100];
-    unsigned short int endereco;
+    unsigned int endereco;
     char tipo;
-    unsigned short int valor;
+    char instrucao[50]; 
 
-    // inicializa memória com 0xFF
-    for(int i = 0; i < 256; i++){
+    for (int i = 0; i < 256; i++) {
         memoria[i] = 0xFF;
     }
 
-    while(fgets(linha, sizeof(linha), fp)){
-        // formato: endereco;tipo;valor
-        // tipo 'i' = instrução, tipo 'd' = dado
-        if(strcmp(linha, "\n") == 0 || strcmp(linha, "") == 0) continue;
+    while (fgets(linha, sizeof(linha), fp)) {
+        if (strcmp(linha, "\n") == 0 || strcmp(linha, "") == 0) continue;
 
-        if(sscanf(linha, "%hx;%c;%hx", &endereco, &tipo, &valor) == 3){
-            if(tipo == 'i'){
-                // instrução - pode ter 1, 2 ou 3 bytes
-                // verificar tamanho da instrução pela leitura
-                unsigned char opcode = (valor >> 5) & 0x1F;
+        if (sscanf(linha, "%x;%c;%[^\n]", &endereco, &tipo, instrucao) == 3) {
+            
+            if (tipo == 'd') {
+                // SE FOR DADO (2 bytes)
+                unsigned int valor;
+                sscanf(instrucao, "%x", &valor);
+                memoria[endereco] = (valor >> 8) & 0xFF;     // byte alto
+                memoria[endereco + 1] = valor & 0xFF;        // byte baixo
                 
-                if(opcode == 0 || opcode == 1){
-                    // hlt e nop - 1 byte
-                    memoria[endereco] = (valor >> 8) & 0xFF;
-                } else if(opcode >= 2 && opcode <= 13){
-                    // 2 registradores - 2 bytes
-                    memoria[endereco] = (valor >> 8) & 0xFF;
-                    memoria[endereco + 1] = valor & 0xFF;
-                } else if(opcode >= 14 && opcode <= 20){
-                    // endereço de memória - 3 bytes
-                    memoria[endereco] = (valor >> 16) & 0xFF;
-                    memoria[endereco + 1] = (valor >> 8) & 0xFF;
-                    memoria[endereco + 2] = valor & 0xFF;
-                } else if(opcode >= 21 && opcode <= 29){
-                    // registrador + endereço/imediato - 3 bytes
-                    memoria[endereco] = (valor >> 16) & 0xFF;
-                    memoria[endereco + 1] = (valor >> 8) & 0xFF;
-                    memoria[endereco + 2] = valor & 0xFF;
+            } else if (tipo == 'i') {
+                // SE FOR INSTRUÇÃO 
+                char mnem[10];
+                int rx = 0, ry = 0;
+                unsigned int imm = 0;
+
+                // pega apenas a primeira palavra para descobrir qual é a instrução
+                sscanf(instrucao, "%s", mnem);
+
+                // ist 1byte: sem operandos
+                if (strcmp(mnem, "hlt") == 0) {
+                    memoria[endereco] = 0x00; // opcode 0
+                } 
+                else if (strcmp(mnem, "nop") == 0) {
+                    memoria[endereco] = (1 << 3); // opcode 1
                 }
-            } else if(tipo == 'd'){
-                // dado - sempre 2 bytes
-                memoria[endereco] = (valor >> 8) & 0xFF;
-                memoria[endereco + 1] = valor & 0xFF;
+                
+                // ist 1byte: 1 operando registrador
+                else if (strcmp(mnem, "not") == 0) {
+                    sscanf(instrucao, "%*s r%d", &rx); // %*s pula a primeira palavra ("not")
+                    memoria[endereco] = (13 << 3) | rx;
+                }
+                
+                // ist 2bytes: 2 operando registradores
+                else if (strcmp(mnem, "ldr") == 0 || strcmp(mnem, "str") == 0 ||
+                         strcmp(mnem, "add") == 0 || strcmp(mnem, "sub") == 0 ||
+                         strcmp(mnem, "mul") == 0 || strcmp(mnem, "div") == 0 ||
+                         strcmp(mnem, "cmp") == 0 || strcmp(mnem, "movr")== 0 ||
+                         strcmp(mnem, "and") == 0 || strcmp(mnem, "or")  == 0 ||
+                         strcmp(mnem, "xor") == 0) {
+                    
+                    sscanf(instrucao, "%*s r%d, r%d", &rx, &ry);
+                    unsigned char opcode = 0;
+                    
+                    if(strcmp(mnem, "ldr") == 0) opcode = 2;
+                    else if(strcmp(mnem, "str") == 0) opcode = 3;
+                    else if(strcmp(mnem, "add") == 0) opcode = 4;
+                    else if(strcmp(mnem, "sub") == 0) opcode = 5;
+                    else if(strcmp(mnem, "mul") == 0) opcode = 6;
+                    else if(strcmp(mnem, "div") == 0) opcode = 7;
+                    else if(strcmp(mnem, "cmp") == 0) opcode = 8;
+                    else if(strcmp(mnem, "movr")== 0) opcode = 9;
+                    else if(strcmp(mnem, "and") == 0) opcode = 10;
+                    else if(strcmp(mnem, "or")  == 0) opcode = 11;
+                    else if(strcmp(mnem, "xor") == 0) opcode = 12;
+
+                    memoria[endereco] = (opcode << 3) | rx;
+                    memoria[endereco + 1] = ry << 5;
+                }
+                
+                // ist 3bytes: jumps
+                else if (strcmp(mnem, "je") == 0  || strcmp(mnem, "jne") == 0 ||
+                         strcmp(mnem, "jl") == 0  || strcmp(mnem, "jle") == 0 ||
+                         strcmp(mnem, "jg") == 0  || strcmp(mnem, "jge") == 0 ||
+                         strcmp(mnem, "jmp") == 0) {
+                    
+                    sscanf(instrucao, "%*s %x", &imm);
+                    unsigned char opcode = 0;
+                    
+                    if(strcmp(mnem, "je") == 0) opcode = 14;
+                    else if(strcmp(mnem, "jne") == 0) opcode = 15;
+                    else if(strcmp(mnem, "jl") == 0) opcode = 16;
+                    else if(strcmp(mnem, "jle") == 0) opcode = 17;
+                    else if(strcmp(mnem, "jg") == 0) opcode = 18;
+                    else if(strcmp(mnem, "jge") == 0) opcode = 19;
+                    else if(strcmp(mnem, "jmp") == 0) opcode = 20;
+
+                    memoria[endereco] = (opcode << 3);
+                    memoria[endereco + 1] = (imm >> 8) & 0xFF;
+                    memoria[endereco + 2] = imm & 0xFF;
+                }
+                
+                // ist 3bytes: registrador + imediato/memória
+                else if (strcmp(mnem, "ld") == 0   || strcmp(mnem, "st") == 0 ||
+                         strcmp(mnem, "movi") == 0 || strcmp(mnem, "addi") == 0 ||
+                         strcmp(mnem, "subi") == 0 || strcmp(mnem, "muli") == 0 ||
+                         strcmp(mnem, "divi") == 0 || strcmp(mnem, "lsh") == 0 ||
+                         strcmp(mnem, "rsh") == 0) {
+                    
+                    sscanf(instrucao, "%*s r%d, %x", &rx, &imm);
+                    unsigned char opcode = 0;
+                    
+                    if(strcmp(mnem, "ld") == 0) opcode = 21;
+                    else if(strcmp(mnem, "st") == 0) opcode = 22;
+                    else if(strcmp(mnem, "movi")== 0) opcode = 23;
+                    else if(strcmp(mnem, "addi")== 0) opcode = 24;
+                    else if(strcmp(mnem, "subi")== 0) opcode = 25;
+                    else if(strcmp(mnem, "muli")== 0) opcode = 26;
+                    else if(strcmp(mnem, "divi")== 0) opcode = 27;
+                    else if(strcmp(mnem, "lsh") == 0) opcode = 28;
+                    else if(strcmp(mnem, "rsh") == 0) opcode = 29;
+
+                    memoria[endereco] = (opcode << 3) | rx;
+                    memoria[endereco + 1] = (imm >> 8) & 0xFF;
+                    memoria[endereco + 2] = imm & 0xFF;
+                }
             }
-        } else if(strstr(linha, "hlt") != NULL){
-            break; // encontrou hlt, para de ler
+        } else if (strstr(linha, "hlt") != NULL) {
+            break;
         }
     }
-
     fclose(fp);
 }
 
 void executa(){
-    // executa a instrução de acordo com o opcode em ir usando if e else if
-    unsigned char byte_alto, byte_baixo;
+    unsigned char byte_alto, byte_baixo; // confg da memória vs tam instrução
 
     if (ir == 0) { // hlt
         printf("Instrução: HLT\n");
@@ -347,7 +419,7 @@ int main(int argc, char *argv[]){
     // exibe estado inicial
     imprime_estado();
 
-    // ciclo de máquina
+    // ciclo da máquina
     int halt = 0;
     while(!halt){
         busca();
