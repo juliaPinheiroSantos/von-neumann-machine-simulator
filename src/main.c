@@ -134,7 +134,6 @@ void decode(){
     para pegar o endereço de memória, precisamos deslocar 16 bits para a esquerda e depois 16 bits para a direita
     */
     if(ir >= 14 && ir <= 20){
-        pc = (mbr << 16) >> 16;
         mar = (mbr << 16) >> 16;
     }
 
