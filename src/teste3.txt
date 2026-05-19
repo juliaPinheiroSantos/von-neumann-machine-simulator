@@ -1,0 +1,9 @@
+0;i;ld r0, 50
+3;i;movi r1, 5
+6;i;cmp r0, r1
+8;i;jg e
+b;i;hlt
+e;i;movi r2, FF
+11;i;st r2, 52
+14;i;hlt
+50;d;000A

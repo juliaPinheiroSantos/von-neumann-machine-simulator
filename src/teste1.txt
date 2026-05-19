@@ -1,0 +1,8 @@
+0;i; movi r0, 10
+3;i; addi r0, 5
+6;i; movr r1, r0
+8;i; muli r1, 2
+b;i; movi r2, 2
+e;i; div r1, r2
+10;i; sub r1, r0
+12;i; hlt

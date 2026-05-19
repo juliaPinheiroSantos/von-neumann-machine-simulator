@@ -1,0 +1,13 @@
+0;i; movi r0, 0
+3;i; movi r1, a
+6;i; ld r3, fe
+9;i; ld r2, fc
+c;i; str r3, r2
+e;i; addi r2, 2
+11;i; st r2, fc
+14;i; addi r0, 1
+17;i; cmp r0, r1
+19;i; jl c
+1c;i; hlt
+fc;d; 0030
+fe;d; ffff
