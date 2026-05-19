@@ -45,8 +45,11 @@ int main(){
     return 0;
 }
 
+
+
 /**
- * Função de busca, responsável por buscar o próximo endereço de memória e armazenar no registrador mbr
+ * @brief Função de Busca
+    Responsável por buscar o próximo endereço de memória e armazenar no registrador mbr.
     Assumimos que cada instrução poderá ter 1, 2 ou 3 (bytes). Cada endereço de memória armazena 1 byte (8 bits)
     Vamos buscar sempre 3 bytes e inserir no mbr através de operações bit-a-bit de "shift"
  */
@@ -73,7 +76,10 @@ void fetch(){
 }
 
 
-/** Função de decodificação, responsável por "fatiar" a palavra de memória buscada e distribuir cada "fatia" para um registrador designado.
+
+/**
+ * @brief Função de Decodificação
+    Responsável por "fatiar" a palavra de memória buscada e distribuir cada "fatia" para um registrador designado.
     O estado atual do registrador mbr é: [0000 0000] [byte 1] [byte 2] [byte 3].
     As instruções podem ser de 5 tipos diferentes:
         [opcode | 0]
@@ -92,58 +98,80 @@ void fetch(){
         No próximo ciclo, ao ser incrementado, ele passa a apontar para a posição 11, que indica a instrução add seguinte.
         Mesmo que no mbr quando pc = 10 tinha parte da próxima instrução, essa parte é "descartada" e "lida novamente" no próximo ciclo.
     
+    @details O que cada registrador vai conter?
+    Mbr (em todas as instruções) - contém a palavra de instrução inteira [0000 0000] [0101 1111] [1111 1111] [0000 0000]
+        como queremos somente os bits de 23:19 referentes ao opcode, deslocamos para a direita em 19 bits.
+        [0000 0000] [0101 1111] [1111 1111] [0000 0000] -> [0000 0000] [0000 0000] [0000 0000] [0000 1011]
+    
+    Instruções com 8 bits - hlt (0) e nop (1)
+        formato: [0000 0000] [opcode(5bits) 000] [8bits outra instrução] [8bits outra instrução]
+        ambas não fazem "nada" no decode(), então só pegamos o opcode delas e guardamos em ir
+    
+    Instruções com 16 bits - ldr (2) até xor (12)
+        formato: [0000 0000] [opcode(5bits) reg0(3bits)] [reg1(3bits) 0 0000] [8bits outra instrução] 
+        todas guardam os índices dos registradores em reg0 (1º registrador da instrução) e em reg1 (2º registrador da instrução)
+        para pegar reg0 (ou ro0), precisamos deslocar 13bits para a esquerda e depois 29bits para a direita
+        para pegar reg1 (ou ro1), precisamos deslocar 16bits para a esquerda e depois 29bits para a direita
+    
+    Instruções com 8 bits - not (13)
+        formato: [0000 0000] [opcode(5bits) reg0(3bits)] [8bits outra instrução] [8bits outra instrução]
+        o índice do registrador da instrução precisa ficar no reg0 (ou ro0)
+        para pegar o reg0, precisamos deslocar 13bits para a esquerda e depois 29bits para a direita
+    
+    Instrução com 24 bits - je (14) até jmp (20)
+        formato: [0000 0000] [opcode(5bits) 000] [endereço de memória(8bits)] [endereço de memória(8bits)]
+        o endereço de memória precisa ficar no registrador PC
+        para pegar o endereço de memória, precisamos deslocar 16 bits para a esquerda e depois 16 bits para a direita
+    
+    Instrução com 24 bits - ld (21) até st (22)
+        formato: [0000 0000] [opcode(5bits) reg0(3bits)] [endereço de memória(8bits)] [endereço de memória(8bits)] 
+        o índice do registrador da instrução precisa ficar no reg0 (ou ro0)
+            para pegar o reg0, precisamos deslocar 13 bits para a esquerda e depois 29 bits para a direita
+        o endereço de memória precisa ficar no registrador mar
+            para pegar o endereço de memória, precisamos deslocar 16bits para a esquerda e depois 16bits para a direita
+
+    Instrução com 24 bits - ld (21) até st (22)
+        formato: [0000 0000] [opcode(5bits) reg0(3bits)] [endereço de memória(8bits)] [endereço de memória(8bits)] 
+        o índice do registrador da instrução precisa ficar no reg0 (ou ro0)
+            para pegar o reg0, precisamos deslocar 13 bits para a esquerda e depois 29 bits para a direita
+        o endereço de memória precisa ficar no registrador mar
+            para pegar o endereço de memória, precisamos deslocar 16bits para a esquerda e depois 16bits para a direita
+    
+    Instrução com 24 bits - movi(23) até rsh (29)
+        formato: [0000 0000] [opcode(5bits) reg0(3bits)] [endereço de memória(8bits)] [endereço de memória(8bits)] 
+        o índice do registrador da instrução precisa ficar no reg0 (ou ro0)
+            para pegar o reg0, precisamos deslocar 13 bits para a esquerda e depois 29 bits para a direita
+        o imediato precisa ficar no registrador imm
+            para pegar o imediato, precisamos deslocar 16bits para a esquerda e depois 16bits para a direita
+    
+ * 
  */
 void decode(){
     
-    ir = mbr >> 19;                         // o mbr contém a palavra de instrução inteira [0000 0000] [0101 1111] [1111 1111] [0000 0000]
-                                            // como queremos somente os bits de 23:19 referentes ao opcode, deslocamos para a direita em 19 bits.
-                                            // [0000 0000] [0101 1111] [1111 1111] [0000 0000] -> [0000 0000] [0000 0000] [0000 0000] [0000 1011]
+    ir = mbr >> 19;                         
     
     // instrução com 8 bits - hlt (0) e nop (1)
-    // formato: [0000 0000] [opcode(5bits) 000] [8bits outra instrução] [8bits outra instrução]
-    // ambas não fazem "nada" no decode(), então só pegamos o opcode delas e guardamos em ir
-    
-
     if(ir >= 0 && ir <= 1){
         return;
     }
 
-    /** instrução com 16 bits - ldr (2) até xor (12)
-    formato: [0000 0000] [opcode(5bits) reg0(3bits)] [reg1(3bits) 0 0000] [8bits outra instrução] 
-    todas guardam os índices dos registradores em reg0 (1º registrador da instrução) e em reg1 (2º registrador da instrução)
-    para pegar reg0 (ou ro0), precisamos deslocar 13bits para a esquerda e depois 29bits para a direita
-    para pegar reg1 (ou ro1), precisamos deslocar 16bits para a esquerda e depois 29bits para a direita
-    */
+    // instrução com 16 bits - ldr (2) até xor (12)
     if(ir >= 2 && ir <= 12){ 
         ro0 = (mbr << 13) >> 29;
         ro1 = (mbr << 16) >> 29;
     }
 
-    /** instrução com 8 bits - not (13)
-    formato: [0000 0000] [opcode(5bits) reg0(3bits)] [8bits outra instrução] [8bits outra instrução]
-    o índice do registrador da instrução precisa ficar no reg0 (ou ro0)
-    para pegar o reg0, precisamos deslocar 13bits para a esquerda e depois 29bits para a direita
-     */
+    // instrução com 8 bits - not (13)
     if(ir == 13){
         ro0 = (mbr << 13) >> 29;
     }
 
-    /** instrução com 24 bits - je (14) até jmp (20) 
-    formato: [0000 0000] [opcode(5bits) 000] [endereço de memória(8bits)] [endereço de memória(8bits)]
-    o endereço de memória precisa ficar no registrador PC
-    para pegar o endereço de memória, precisamos deslocar 16 bits para a esquerda e depois 16 bits para a direita
-    */
+    // instrução com 24 bits - je (14) até jmp (20)
     if(ir >= 14 && ir <= 20){
         mar = (mbr << 16) >> 16;
     }
 
-    /** instrução com 24 bits - ld (21) até st (22)
-    formato: [0000 0000] [opcode(5bits) reg0(3bits)] [endereço de memória(8bits)] [endereço de memória(8bits)] 
-    o índice do registrador da instrução precisa ficar no reg0 (ou ro0)
-        para pegar o reg0, precisamos deslocar 13 bits para a esquerda e depois 29 bits para a direita
-    o endereço de memória precisa ficar no registrador mar
-        para pegar o endereço de memória, precisamos deslocar 16bits para a esquerda e depois 16bits para a direita
-    */
+    // instrução com 24 bits - ld (21) até st (22)
     if(ir >= 21 && ir <= 22){
         ro0 = (mbr << 13) >> 29;
         mar = (mbr << 16) >> 16;
@@ -151,13 +179,7 @@ void decode(){
     }
 
 
-    /** instrução com 24 bits - movi(23) até rsh (29)
-    formato: [0000 0000] [opcode(5bits) reg0(3bits)] [endereço de memória(8bits)] [endereço de memória(8bits)] 
-    o índice do registrador da instrução precisa ficar no reg0 (ou ro0)
-        para pegar o reg0, precisamos deslocar 13 bits para a esquerda e depois 29 bits para a direita
-    o imediato precisa ficar no registrador imm
-        para pegar o imediato, precisamos deslocar 16bits para a esquerda e depois 16bits para a direita
-    */
+    // instrução com 24 bits - movi(23) até rsh (29)
     if(ir >= 23 && ir <= 29){
         ro0 = (mbr << 13) >> 29;
         imm = (mbr << 16) >> 16;
@@ -167,7 +189,9 @@ void decode(){
 }
 
 
-/** Função de busca, responsável por executar a instrução de acordo com o seu opcode (armazenado no registrador ir).
+ /**
+  * @brief Função de Execução
+    Responsável por executar a instrução de acordo com o seu opcode (armazenado no registrador ir).
     O estado atual de cada registrador depende: da instrução buscada anteriormente e da instrução buscada no atual ciclo de máquina.
     O incremento do pc depois da execução de cada instrução depende do tamanho da instrução que foi executada:
         se a instrução tem 1 byte, incrementa o pc em 1
@@ -175,25 +199,110 @@ void decode(){
         se a instrução tem 3 bytes, incrementa o pc em 3
     Todo endereço de memória deve ser indicado pelo mar.
     Todo o tráfego de e para a memória RAM deve passar pelo mbr.
- */
 
+    @details Cases:
+    0. hlt 
+        O que faz: para o programa. Como o nosso ciclo de máquina continua funcionando while(flag == 0), retornar 1 nesse case vai fazer o ciclo parar.
+    1. nop  
+        O que faz: nenhuma operação, só incremento do registrador pc
+    2. ldr rX, rY 
+        O que faz: carrega no registrador rX o conteúdo do endereço indicado pelo registrador rY
+        se queremos pegar o conteúdo do endereço indicado por rY, precisamos que o endereço desse conteúdo esteja no mar
+            além disso, o conteúdo depois de buscado, precisa estar no mbr
+        depois disso é que esse conteúdo deve ser inserido no registrador indicado por rX
+    3. str rX, rY
+        O que faz: armazena no endereço indicado por rY o valor do registrador rX
+        se queremos pegar o endereço de rY (que é reg[ro1]), precisamos que esse endereço esteja no mar
+        se queremos armazenar o conteúdo de rX (que é reg[ro0]) no endereço de rY, precisamos que o conteúdo de rX esteja no mbr
+    4. add rX, rY
+        o que faz: adiciona o conteúdo de rX e rY e guarda esse valor em rX
+    5. sub rX, rY 
+        o que faz: subtrái do conteúdo de rX o valor de rY, e guarda esse valor em rX
+    6. mul rX, rY 
+        o que faz: multiplica o conteúdo de rX pelo conteúdo de rY, e guarda esse valor em rX
+    7. div rX, rY 
+        o que faz: divide o conteúdo de rX pelo conteúdo de rY, e guarda esse valor em rX
+        não precisamos nos preocupar com um resultado de "valor flutuante" no caso dessa divisão de inteiros, pois o C já fica responsável por ignorar o resto e considerar só o inteiro
+        entretanto, no caso de divisão por 0, isso pode dar algum erro
+    8. cmp rX, rY 
+        o que faz: compara o conteúdo de rX com o conteúdo de rY
+        se rX = rY, então e = 1; senão, e = 0
+        se rX < rY, então l = 1; senão, l = 0
+        se rX > rY, então g = 1; senão g = 0
+    9. movr rX, rY
+        o que faz: substitui o valor de rX pelo valor de rY, é uma atribuição simples
+    10. and rX, rY
+        o que faz: operação bit-a-bit. realiza a operação lógica '&' entre rX e rY e guarda o resultado dessa operação em rX
+        o operaçao '&' alinha os dois números binários um debaixo do outro e faz uma comparação coluna por coluna
+        se nessa coluna ambos os bits forem 1, ele resulta em 1. se um deles for 0, resulta em 0
+    11. or rX, rY 
+        o que faz: operação bit-a-bit. realiza a operação lógica '|' (or) entre rX e rY e guarda o resultado dessa operação em rX
+        a operação '|' alinha os dois números binários um debaixo do outro e faz uma comparação coluna por coluna
+        se nessa coluna um dos bits for 1, ele resulta em 1. se ambos os bits forem 0, resulta em 0
+    12. xor rX, rY 
+        o que faz: operação bit-a-bit. realiza a operação lógica '^' (xor) entre rX e rY e guarda o resultado dessa operação em rX
+        a operação '^' alinha os dois números binários um debaixo do outro e faz uma comparação coluna por coluna
+        se nessa coluna os bits forem diferentes entre si, ele resulta em 1. se forem iguais, resulta em 0
+    13. not rX 
+        o que faz: operação bit-a-bit. ele inverte todos os bits do valor armazenado em rx
+        o que é 1 vira 0, e o que é 0 vira 1
+        em C, o operador que faz isso é o '~'
+    14. je Z 
+        o que faz: salto para o endereço Z se a flag E = 1
+        o endereço Z vai estar armazendo no registrador mar
+        não pode incrementar o pc para a próxima posição porque vai ir para a posição Z que está armazenada em PC agora
+        se não entrar na condição, deve buscar a próxima instrução, já que não vai pro endereço Z do salto
+    15. jne Z 
+        o que faz: salto para o endereço Z se a flag E = 0
+    16. jl Z 
+        o que faz: salto para o endereço Z se a flag L = 1
+    17. jle Z 
+        o que faz: salto para o endereço Z se a flag E = 1 ou a flag L = 1
+    18. jg Z 
+        o que faz: salto para o endereço Z se a flag G = 1
+    19. jge Z
+        o que faz: salto para o endereço Z se a flag E = 1 ou G = 1
+    20. jmp Z 
+        o que faz: salto incondicional
+    21. ld rX, Z
+        o que faz: carrega no registrador rX a palavra de memória que está no endereço memoria[Z]
+        o endereço de memória vai pro mar
+        a palavra que está em mbr será toda sobrescrita pela palavra em memória[mar]
+            isso acontece porque o C, quando fazemos uma atribuição de uma variável menor (memoria[mar]) para uma variável maior (mbr)
+            ele realiza um zero padding (preenchimentos com zero à esquerda), que transforma o mbr todo em [0000] [0000] [0000] [0000]
+    22. st rX, Z 
+        o que faz: armazena no endereço memoria[Z] a palavra que está no registrador rX
+        a palavra que queremos salvar está no registrador de índice ro0
+        precisamos passar pro mbr essa palavra
+        como o mar é menor que o mbr, e a palavra de memória tem 16 bits, vamos armazenar ela em duas unidades endereçáveis da memória que é mar e mar+1
+            no memoria[mar], vamos colocar os 8 bits MSB de mbr. Para isso, deslocamos 16 bits para a esquerda e 24 bits para a direita
+            na memoria[mar], vamos colocar os 8 bits LSB de mbr. Para isso, deslocamos 24 bits para a esquerda e 24 bits para a direita
+    23. movi rX, IMM
+        o que faz: coloca no registrador rX o valor do imediato imm
+    24. addi rX, IMM
+        o que faz: soma o imm ao valor de rX e guarda em rX
+    25. subi rX, IMM
+        o que faz: subtrai o imm ao valor de rX e guarda em rX
+    26. muli rX, IMM
+        o que faz: multiplica o valor de rX por imm e guarda em rX
+    27. divi rX, IMM 
+        o que faz: divide o valor de rX por imm e guarda em rX
+    28. lsh rX, IMM
+        o que faz: desloca rX imm bits para a esquerda
+    29. rsh rX, IMM
+        o que faz: desloca rX imm bits para a direita
+  * 
+  * @return int - condição de parada do while na função main.
+  */
 int execute(){
     switch(ir){
-        case 0: /** hlt -> para o programa
-            como o nosso ciclo de máquina continua funcionando while(flag == 0), 
-            retornar 1 nesse case vai fazer o ciclo parar.
-             */
+        case 0: // hlt 
             return 1;
-        case 1: 
+        case 1: // nop 
             pc++;
             break;
 
-        case 2: /**ldr rX, rY -> rX = *rY
-            o que faz: carrega no registrador rX o conteúdo do endereço indicado pelo registrador rY
-            se queremos pegar o conteúdo do endereço indicado por rY, precisamos que o endereço desse conteúdo esteja no mar
-                além disso, o conteúdo depois de buscado, precisa estar no mbr
-            depois disso é que esse conteúdo deve ser inserido no registrador indicado por rX
-            */ 
+        case 2: //ldr rX, rY -> rX = *rY
             mar = reg[ro1];                             // o endereço está em rY (que é o índice guardado em ro1)
             
             // considerando que o dado tem 16bits, cada índice de memória guarda 8bits e o barramento também é de 8bits
@@ -205,12 +314,7 @@ int execute(){
                                                         // portanto, incrementamos em 2 para pegar a próxima instrução válida.
             break;
                                                         
-        case 3: /**str rX, rY -> ∗rY = rX 
-            o que faz: armazena no endereço indicado por rY o valor do registrador rX
-            se queremos pegar o endereço de rY (que é reg[ro1]), precisamos que esse endereço esteja no mar
-            se queremos armazenar o conteúdo de rX (que é reg[ro0]) no endereço de rY, precisamos que o conteúdo de rX esteja no mbr
-            */
-
+        case 3: // str rX, rY -> ∗rY = rX
             mar = reg[ro1];
             mbr = reg[ro0];
             // estado atual do mbr: [0000 0000] [0000 0000] [8bits MSB do dado] [8bits LSB do dado]
@@ -222,32 +326,22 @@ int execute(){
             pc = pc + 2;
             break;
 
-        case 4: /** add rX, rY -> rX = rX + rY
-            o que faz: adiciona o conteúdo de rX e rY e guarda esse valor em rX
-             */
+        case 4: // add rX, rY -> rX = rX + rY
              reg[ro0] = reg[ro0] + reg[ro1];
              pc = pc + 2;
              break;
 
-        case 5: /** sub rX, rY -> rX = rX - rY
-            o que faz: subtrái do conteúdo de rX o valor de rY, e guarda esse valor em rX
-            */
+        case 5: // sub rX, rY -> rX = rX - rY
             reg[ro0] = reg[ro0] - reg[ro1];
             pc = pc + 2;
             break;
         
-        case 6: /** mul rX, rY -> rX = rX * rY
-            o que faz: multiplica o conteúdo de rX pelo conteúdo de rY, e guarda esse valor em rX
-            */
+        case 6: // mul rX, rY -> rX = rX * rY 
             reg[ro0] = reg[ro0] * reg[ro1];
             pc = pc + 2;
             break;
         
-        case 7: /** div rX, rY -> rX = rX / rY
-            o que faz: divide o conteúdo de rX pelo conteúdo de rY, e guarda esse valor em rX
-            não precisamos nos preocupar com um resultado de "valor flutuante" no caso dessa divisão de inteiros, pois o C já fica responsável por ignorar o resto e considerar só o inteiro
-            entretanto, no caso de divisão por 0, isso pode dar algum erro
-             */
+        case 7: // div rX, rY -> rX = rX / rY
             if(reg[ro1] != 0){
                 reg[ro0] = reg[ro0] / reg[ro1];
             } else {
@@ -257,14 +351,7 @@ int execute(){
             pc = pc + 2;
             break;
         
-        case 8: /** cmp rX, rY 
-            o que faz: compara o conteúdo de rX com o conteúdo de rY
-            se rX = rY, então e = 1; senão, e = 0
-            se rX < rY, então l = 1; senão, l = 0
-            se rX > rY, então g = 1; senão g = 0
-         */
-
-            
+        case 8: // cmp rX, rY
             if(reg[ro0] == reg[ro1]){
                 e = 1;
             } else {
@@ -287,59 +374,34 @@ int execute(){
 
             break;
         
-        case 9: /** movr rX, rY -> rX = rY
-            o que faz: substitui o valor de rX pelo valor de rY, é uma atribuição simples
-            */
+        case 9: // movr rX, rY -> rX = rY
             reg[ro0] = reg[ro1];
             pc = pc + 2;
             break;
         
-        case 10: /** and rX, rY -> rX = rX & rY 
-            o que faz: operação bit-a-bit. realiza a operação lógica '&' entre rX e rY e guarda o resultado dessa operação em rX
-            o operaçao '&' alinha os dois números binários um debaixo do outro e faz uma comparação coluna por coluna
-            se nessa coluna ambos os bits forem 1, ele resulta em 1. se um deles for 0, resulta em 0
-            */
-
+        case 10: // and rX, rY -> rX = rX & rY
             reg[ro0] = reg[ro0] & reg[ro1];
             pc = pc + 2;
             break;
         
-        case 11: /** or rX, rY -> rX = rX | rY
-            o que faz: operação bit-a-bit. realiza a operação lógica '|' (or) entre rX e rY e guarda o resultado dessa operação em rX
-            a operação '|' alinha os dois números binários um debaixo do outro e faz uma comparação coluna por coluna
-            se nessa coluna um dos bits for 1, ele resulta em 1. se ambos os bits forem 0, resulta em 0
-             */
+        case 11: // or rX, rY -> rX = rX | rY
             reg[ro0] = reg[ro0] | reg[ro1];
             pc = pc + 2;
             break;
 
 
-        case 12: /** xor rX, rY -> rX = rX ^ rY
-            o que faz: operação bit-a-bit. realiza a operação lógica '^' (xor) entre rX e rY e guarda o resultado dessa operação em rX
-            a operação '^' alinha os dois números binários um debaixo do outro e faz uma comparação coluna por coluna
-            se nessa coluna os bits forem diferentes entre si, ele resulta em 1. se forem iguais, resulta em 0
-             */
+        case 12: // xor rX, rY -> rX = rX ^ rY
 
             reg[ro0] = reg[ro0] ^ reg[ro1];
             pc = pc + 2;
             break;
         
-        case 13: /** not rX ->  rX = !rX 
-            o que faz: operação bit-a-bit. ele inverte todos os bits do valor armazenado em rx
-            o que é 1 vira 0, e o que é 0 vira 1
-            em C, o operador que faz isso é o '~'
-            */
-
+        case 13: // not rX ->  rX = !rX
             reg[ro0] = ~reg[ro0];
             pc = pc + 1;
             break;
         
-        case 14: /** je Z -> PC = Z se E = 1
-            o que faz: salto para o endereço Z se a flag E = 1
-            o endereço Z vai estar armazendo no registrador mar
-            não pode incrementar o pc para a próxima posição porque vai ir para a posição Z que está armazenada em PC agora
-            se não entrar na condição, deve buscar a próxima instrução, já que não vai pro endereço Z do salto
-             */
+        case 14: // je Z -> PC = Z se E = 1
 
              if(e == 1){
                 pc = mar;
@@ -349,9 +411,7 @@ int execute(){
 
              break;
         
-        case 15: /** jne Z -> PC = Z se E = 0
-             o que faz: salto para o endereço Z se a flag E = 0
-             */
+        case 15: // jne Z -> PC = Z se E = 0
 
              if(e == 0){
                 pc = mar;
@@ -361,9 +421,7 @@ int execute(){
 
              break;
         
-        case 16: /** jl Z -> PC = Z se L = 1
-             o que faz: salto para o endereço Z se a flag L = 1
-             */
+        case 16: // jl Z -> PC = Z se L = 1
 
              if(l == 1){
                 pc = mar;
@@ -373,9 +431,7 @@ int execute(){
 
              break;
 
-        case 17: /** jle Z -> PC = Z se E = 1 ou L = 1
-             o que faz: salto para o endereço Z se a flag E = 1 ou a flag L = 1
-             */
+        case 17: // jle Z -> PC = Z se E = 1 ou L = 1
             
              if(e == 1 || l == 1){
                 pc = mar;
@@ -384,9 +440,7 @@ int execute(){
              }
              break;
 
-        case 18: /** jg Z -> PC = Z se G = 1
-            o que faz: salto para o endereço Z se a flag G = 1
-             */
+        case 18: // jg Z -> PC = Z se G = 1
             
              if(g == 1){
                 pc = mar;
@@ -396,9 +450,8 @@ int execute(){
 
              break;
         
-        case 19: /** jge Z -> PC = Z se E = 1 ou G = 1
-             */
-
+        case 19: // jge Z -> PC = Z se E = 1 ou G = 1
+        
              if(e == 1 || g == 1){
                 pc = mar;
              } else {
@@ -407,19 +460,12 @@ int execute(){
 
              break;
         
-        case 20: /** jmp Z -> PC = Z
-             */
+        case 20: // jmp Z -> PC = Z
 
              pc = mar;
              break;
 
-        case 21: /** ld rX, Z -> rX = *Z
-            o que faz: carrega no registrador rX a palavra de memória que está no endereço memoria[Z]
-            o endereço de memória vai pro mar
-            a palavra que está em mbr será toda sobrescrita pela palavra em memória[mar]
-                isso acontece porque o C, quando fazemos uma atribuição de uma variável menor (memoria[mar]) para uma variável maior (mbr)
-                ele realiza um zero padding (preenchimentos com zero à esquerda), que transforma o mbr todo em [0000] [0000] [0000] [0000]
-            */
+        case 21: // ld rX, Z -> rX = *Z
 
             mbr = memoria[mar];
             mbr = (mbr << 8) + memoria[mar + 1];
@@ -429,15 +475,7 @@ int execute(){
 
             break;
         
-        case 22: /** st rX, Z -> *Z = rX
-            o que faz: armazena no endereço memoria[Z] a palavra que está no registrador rX
-            a palavra que queremos salvar está no registrador de índice ro0
-            precisamos passar pro mbr essa palavra
-            como o mar é menor que o mbr, e a palavra de memória tem 16 bits, vamos armazenar ela em duas unidades endereçáveis da memória
-                que é mar e mar+1
-                no memoria[mar], vamos colocar os 8 bits MSB de mbr. Para isso, deslocamos 16 bits para a esquerda e 24 bits para a direita
-                na memoria[mar], vamos colocar os 8 bits LSB de mbr. Para isso, deslocamos 24 bits para a esquerda e 24 bits para a direita
-            */
+        case 22: // st rX, Z -> *Z = rX
             mbr = reg[ro0];
             memoria[mar] = (mbr << 16) >> 24;
             memoria[mar + 1] = (mbr << 24) >> 24;
@@ -445,18 +483,14 @@ int execute(){
              
             break;
         
-        case 23: /** movi rX, IMM -> rX = IMM
-            o que faz: coloca no registrador rX o valor do imediato imm
-            */
+        case 23: // movi rX, IMM -> rX = IMM
             reg[ro0] = imm;
 
             pc = pc + 3;
 
             break;
         
-        case 24: /** addi rX, IMM -> rX = rX + imm
-            o que faz: soma o imm ao valor de rX e guarda em rX
-            */
+        case 24: // addi rX, IMM -> rX = rX + imm
 
             reg[ro0] += imm;
 
@@ -464,9 +498,7 @@ int execute(){
 
             break;
         
-        case 25: /** subi rX, IMM -> rX = rX - imm
-             o que faz: subtrai o imm ao valor de rX e guarda em rX
-            */
+        case 25: // subi rX, IMM -> rX = rX - imm
 
             reg[ro0] = reg[ro0] - imm;
 
@@ -474,9 +506,7 @@ int execute(){
 
             break;
         
-        case 26: /** muli rX, IMM -> rX = rX * imm
-             o que faz: multiplica o valor de rX por imm e guarda em rX
-            */
+        case 26: // muli rX, IMM -> rX = rX * imm
 
             reg[ro0] = reg[ro0] * imm;
 
@@ -484,9 +514,7 @@ int execute(){
 
             break;
         
-        case 27: /** divi rX, IMM -> rX = rX / imm
-             o que faz: divide o valor de rX por imm e guarda em rX
-             */
+        case 27: // divi rX, IMM -> rX = rX / imm
 
              reg[ro0] = reg[ro0] / imm;
 
@@ -494,9 +522,7 @@ int execute(){
 
              break;
 
-        case 28: /**lsh rX, IMM -> rX = rX << imm
-             o que faz: desloca rX imm bits para a esquerda
-             */
+        case 28: // lsh rX, IMM -> rX = rX << imm
 
              reg[ro0] = reg[ro0] << imm;
 
@@ -504,9 +530,7 @@ int execute(){
 
              break;
         
-        case 29: /** rsh rX, IMM -> rX = rX >> imm
-             o que faz: desloca rX imm bits para a direita
-             */
+        case 29: // rsh rX, IMM -> rX = rX >> imm
 
              reg[ro0] = reg[ro0] >> imm;
              pc = pc + 3;
@@ -526,10 +550,20 @@ int execute(){
 
 }
 
+
+/**
+ * @brief Imprime a matriz de memória e o valor de todos os registradores
+    %04X imprime o número em hexadecimal, maiúsculo, com 4 dígitos e preenchidos com 0's 
+    aplicamos o fundo amarelo só para os valores com a constante BG_YELLOW
+    para resetar quando não queremos aplicar o fundo amarelo, usamos RESET
+
+    A matriz de memória é impressa com dois for's aninhados:
+        O externo para cada linha e o interno para cada célula daquela linha e daquela coluna (impressa anterioremente fora do for com a formatação correta)
+
+ * 
+ */
 void imprimirEstado(){
     printf("\nCPU:\n");
-    // %04X imprime o número em hexadecimal, maiúsculo, com 4 dígitos e preenchidos com 0's 
-    // aplicamos o fundo amarelo só para os valores 
     printf("R0:      " BG_YELLOW "%04X" RESET "    R1:      " BG_YELLOW "%04X" RESET "    R2:      " BG_YELLOW "%04X" RESET "    R3: " BG_YELLOW "%04X" RESET "\n", reg[0], reg[1], reg[2], reg[3]);      
     printf("R4:      " BG_YELLOW "%04X" RESET "    R5:      " BG_YELLOW "%04X" RESET "    R6:      " BG_YELLOW "%04X" RESET "    R7: " BG_YELLOW "%04X" RESET "\n", reg[4], reg[5], reg[6], reg[7]);
     printf("MBR:     " BG_YELLOW "%08X" RESET "        MAR:     " BG_YELLOW "%04X" RESET "    IMM:     " BG_YELLOW "%04X" RESET "    PC: " BG_YELLOW "%04X" RESET "\n", mbr, mar, imm, pc);                  

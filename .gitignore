@@ -1,0 +1,9 @@
+# Pastas geradas pelo Doxygen
+xml/
+html/
+latex/
+
+# Outros arquivos comuns de C/C++ que você pode querer ignorar
+*.o
+*.out
+*.exe

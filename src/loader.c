@@ -5,17 +5,25 @@
 /** Arquivo "loader" ou montador, responsável por carregar nosso programa.txt na memória.
  */
 
-/* Para facilitar, criamos uma struct instrucao que vai "catalogar" todos os opcodes que temos junto com o número dele.
+
+/**
+ * @brief Struct instrucao
+    Para facilitar, criamos uma struct instrucao que vai "catalogar" todos os opcodes que temos junto com o número dele.
     char mnemonico[10] vai armazenar o comando, como hlt, ldr e etc.
     unsigned char opcode vai ser o opcode de cada instrução em decimal. 
         Colocamos como char porque vamos comparar com stcmp() com o char que vier na leitura de cada linha.
-*/
+ * 
+ */
 typedef struct {
     char mnemonico[10];
     unsigned char opcode;
 } instrucao;
 
-// a tabela com todas as instruções catalogadas
+
+/**
+ * @brief a tabela com todas as instruções catalogadas
+ * 
+ */
 instrucao tabela_instrucoes[] = {
     {"hlt", 0}, {"nop", 1}, {"ldr", 2}, {"str", 3}, {"add", 4},
     {"sub", 5}, {"mul", 6}, {"div", 7}, {"cmp", 8}, {"movr", 9},
@@ -27,9 +35,13 @@ instrucao tabela_instrucoes[] = {
 
 
 
-/** É a função responsável por comparar o mnemonico que está no programa.txt com o mnemonico da tabela
+/**
+ * @brief É a função responsável por comparar o mnemonico que está no programa.txt com o mnemonico da tabela
     Verifica todos os mnemonicos (ao todo 30) até achar. Quando achar, entra no if e retorna o número do opcode.
     Se não achar, é porque esse mnemonico lido não existe no nosso conjunto de instruções. Retorna -1.
+ * 
+ * @param mnemonico lido do arquivo txt
+ * @return int retorna ou o código do mnemônico de acordo com a tabela ou -1 quando ele não existir na tabela
  */
 int obter_opcode(char *mnemonico){
     for (int i = 0; i < 30; i++) {
@@ -42,7 +54,23 @@ int obter_opcode(char *mnemonico){
 }
 
 
-/** É a função responsável por ler linha por linha do programa.txt e carregar ele na memória.
+
+/**
+ * @brief É a função responsável por ler linha por linha do programa.txt e carregar ele na memória.
+ *  
+    @details Uso da função sscanf
+    sscanf vai fatiar a linha baseada nos ';'
+    o operador %x lê o endereço em hexdecimal
+    o operador %c lê o caracter 'i' (instrução) ou 'd' (dado)
+        o operador %[^\n] vai ler tudo o que vier depois do ';' depois de i ou d, até a quebra de linha '\n'
+        %[] é um scanset que serve para ler uma sequência de string que contenha apenas os caracteres especificados dentro dele
+        mas quando usamos o operador '^', nós "negamos" isso -> ou seja, ele vai ter todos os caracteres menos o '\n'
+            isso faz com que ele leia a linha toda até achar uma quebra de linha
+        se o nosso scscanf conseguiu achar os 3 campos (endereco, tipo e conteúdo) é porque ele conseguiu ler a linha toda de instrução/dado
+                por isso fazemos o if (sscanf(..) == 3), porque o sccanf é uma função da biblioteca string.h que retorna quantas "fatias" ela fez na linha
+    
+ * @param arq é o arquivo txt
+ * @param memoria passamos o vetor de memoria[256] como parâmetro para a função já realizar o salvamento do programa em suas células.
  */
 void carregar_memoria(const char *arq, unsigned char *memoria) {
     //padrão pra leitura de arquivos em C
@@ -67,16 +95,6 @@ void carregar_memoria(const char *arq, unsigned char *memoria) {
         unsigned int z = 0;
         int opcode = 0;
 
-        /** o sscanf vai fatiar a linha baseada nos ';'
-            o operador %x lê o endereço em hexdecimal
-            o operador %c lê o caracter 'i' (instrução) ou 'd' (dado)
-            o operador %[^\n] vai ler tudo o que vier depois do ';' depois de i ou d, até a quebra de linha '\n'
-                %[] é um scanset que serve para ler uma sequência de string que contenha apenas os caracteres especificados dentro dele
-                mas quando usamos o operador '^', nós "negamos" isso -> ou seja, ele vai ter todos os caracteres menos o '\n'
-                isso faz com que ele leia a linha toda até achar uma quebra de linha
-            se o nosso scscanf conseguiu achar os 3 campos (endereco, tipo e conteúdo) é porque ele conseguiu ler a linha toda de instrução/dado
-                por isso fazemos o if (sscanf(..) == 3), porque o sccanf é uma função da biblioteca string.h que retorna quantas "fatias" ela fez na linha
-         */
         if (sscanf(linha, "%x;%c;%[^\n]", &endereco, &tipo, conteudo) == 3) {
             // se o tipo da linha for um dado
             if(tipo == 'd'){
