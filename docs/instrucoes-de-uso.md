@@ -30,7 +30,7 @@ Para simular um código Assembly diferente do arquivo padrão, siga exatamente o
 * Salve o arquivo main.c e recompile o projeto inteiramente (repetindo o passo 1 da seção de Compilação).
 
 ## 4. Estrutura Obrigatória do Arquivo .txt
-O arquivo de texto contendo o seu programa deve seguir rigorosamente a formatação exigida pelo Montador (Loader). O arquivo é dividido em três partes: `**endereço;tipo;instrução_ou_dado**`.
+O arquivo de texto contendo o seu programa deve seguir rigorosamente a formatação exigida pelo Montador (Loader). O arquivo é dividido em três partes: **`endereço;tipo;instrução_ou_dado`**.
 
 Abaixo está a estrutura de exemplo validada e pronta para uso:
 
