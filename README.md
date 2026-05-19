@@ -11,4 +11,4 @@ Para rodar este projeto no Ubuntu, use os comandos:
 Para ver a explicação detalhada de todos os opcodes, registradores e o funcionamento interno das funções `fetch`, `decode` e `execute`, **[clique aqui para ler a documentação completa](docs/documentacao.md)**.
 
 ## Créditos
-Este projeto foi desenvolvido para a disciplina de Arquitetura e Organização de Computadores I do curso de Bacharelado em Ciências da Computação do Instituto Federal de Educação, Ciência e Tecnologia de Goiás - Campus Anápolis. Projeto idealizado Prof. Dr. Eng. Hugo Vinícius Leão e Silva e desenvolvido pelas alunas Julia Pinheiro Santos e Yasmim Gomes.
+Projeto desenvolvido para a disciplina de Arquitetura e Organização de Computadores I do curso de Bacharelado em Ciências da Computação do Instituto Federal de Educação, Ciência e Tecnologia de Goiás - Campus Anápolis. Disciplina ministrada pelo [Prof. Dr. Eng. Hugo Vinícius Leão e Silva](https://www.escavador.com/sobre/5606654/hugo-vinicius-leao-e-silva) e desenvolvido pelas alunas [Julia Pinheiro Santos](https://github.com/juliaPinheiroSantos) e [Yasmim Gomes](https://github.com/minwb)
