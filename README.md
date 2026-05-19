@@ -8,4 +8,4 @@ Para rodar este projeto no Ubuntu, use os comandos:
 `./simulador`
 
 ## 📚 Documentação Técnica
-Para ver a explicação detalhada de todos os opcodes, registradores e o funcionamento interno das funções `fetch`, `decode` e `execute`, **[clique aqui para ler a documentação completa](documentacao.md)**.
+Para ver a explicação detalhada de todos os opcodes, registradores e o funcionamento interno das funções `fetch`, `decode` e `execute`, **[clique aqui para ler a documentação completa](src/documentacao.md)**.
